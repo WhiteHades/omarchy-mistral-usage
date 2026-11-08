@@ -1,0 +1,43 @@
+#!/bin/bash
+set -euo pipefail
+if [[ -z ${OMARCHY_PATH:-} && -f /etc/omarchy.conf ]]; then
+  source /etc/omarchy.conf
+fi
+export OMARCHY_PATH="${OMARCHY_PATH:-/usr/share/omarchy}"
+project=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+plugin="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/efaz.agents"
+"$project/bin/build"
+omarchy plugin validate "$project"
+if [[ -L $plugin ]]; then
+  [[ $(readlink -f -- "$plugin") == "$project" ]] || {
+    echo "An unrelated plugin already occupies $plugin" >&2
+    exit 1
+  }
+  rm -- "$plugin"
+elif [[ -e $plugin ]]; then
+  [[ -d $plugin ]] && jq -e '.id == "efaz.agents" and .omarchy.clonedFrom == "omarchy.agents"' "$plugin/manifest.json" >/dev/null || {
+    echo "An unrelated plugin already occupies $plugin" >&2
+    exit 1
+  }
+fi
+mkdir -p -- "$plugin/assets" "$plugin/bin"
+install -m644 "$project/manifest.json" "$project/Panel.qml" "$project/Main.qml" "$project/Agent.qml" "$project/MistralUsage.qml" "$project/Format.js" "$project/README.md" "$plugin/"
+install -m644 "$project"/assets/*.svg "$plugin/assets/"
+staged=$(mktemp "$plugin/bin/.omarchy-mistral-usage.XXXXXX")
+trap 'rm -f -- "$staged"' EXIT
+install -m755 "$project/bin/omarchy-mistral-usage" "$staged"
+mv -f -- "$staged" "$plugin/bin/omarchy-mistral-usage"
+omarchy shell shell rescanPlugins
+discovered=false
+for attempt in {1..30}; do
+  if omarchy plugin list --json | jq -e 'any(.[]; .id == "efaz.agents")' >/dev/null; then
+    discovered=true
+    break
+  fi
+  sleep 0.1
+done
+if [[ $discovered != true ]]; then
+  echo "Timed out waiting for Omarchy to discover efaz.agents" >&2
+  exit 1
+fi
+omarchy plugin enable efaz.agents

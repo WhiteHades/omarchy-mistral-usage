@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+project=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+export CARGO_TARGET_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy-mistral-usage/build"
+cargo build --release --locked --manifest-path "$project/Cargo.toml"
+install -Dm755 "$CARGO_TARGET_DIR/release/omarchy-mistral-usage" "$project/bin/omarchy-mistral-usage"
