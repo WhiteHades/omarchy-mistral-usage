@@ -21,7 +21,7 @@ elif [[ -e $plugin ]]; then
   }
 fi
 mkdir -p -- "$plugin/assets" "$plugin/bin"
-install -m644 "$project/manifest.json" "$project/Panel.qml" "$project/Main.qml" "$project/Agent.qml" "$project/MistralUsage.qml" "$project/Format.js" "$project/README.md" "$plugin/"
+install -m644 "$project/manifest.json" "$project/Panel.qml" "$project/Main.qml" "$project/Agent.qml" "$project/MistralUsage.qml" "$project/Format.js" "$project/README.md" "$project/LICENSE" "$plugin/"
 install -m644 "$project"/assets/*.svg "$plugin/assets/"
 staged=$(mktemp "$plugin/bin/.omarchy-mistral-usage.XXXXXX")
 trap 'rm -f -- "$staged"' EXIT
